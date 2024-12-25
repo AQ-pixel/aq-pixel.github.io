@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Discover which historical era matches your personality with our interactive quiz">
+    <title>Time Travel: Your Era Match</title>
+    <style>
+        :root {
+            --primary-color: #2a9df4;
+            --hover-color: #007acc;
+            --background-start: #1c1c3c;
+            --background-end: #2d2d5b;
+            --text-color: #fff;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, var(--background-start), var(--background-end));
+            color: var(--text-color);
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            padding: 2rem;
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            background: rgba(0, 0, 0, 0.6);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header-animation {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            animation: shine 2s infinite;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .container {
+            flex: 1;
+            padding: 2rem;
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            margin-bottom: 2rem;
+            border-radius: 2px;
+        }
+
+        .progress {
+            height: 100%;
+            background: var(--primary-color);
+            border-radius: 2px;
+            transition: width 0.3s ease;
+        }
+
+        .question {
+            margin: 2rem 0;
+            font-size: 1.2em;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeIn 0.5s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .options {
+            display: grid;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .options button {
+            padding: 1rem 1.5rem;
+            border: 2px solid transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1em;
+            background: rgba(42, 157, 244, 0.2);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .options button:hover {
+            background: rgba(42, 157, 244, 0.4);
+            transform: translateY(-2px);
+            border-color: var(--primary-color);
+        }
+
+        .options button:active {
+            transform: translateY(0);
+        }
+
+        #result {
+            margin-top: 2rem;
+            font-size: 1.5em;
+            display: none;
+            padding: 2rem;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            animation: slideUp 0.5s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .retry-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .retry-button:hover {
+            background: var(--hover-color);
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 1rem;
+            font-size: 0.8em;
+            color: #bbb;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+            
+            .options button {
+                padding: 0.8rem 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-animation"></div>
+        Time Travel: Your Era Match
+    </header>
+    <main class="container">
+        <div class="progress-bar">
+            <div class="progress" id="progress"></div>
+        </div>
+        <div id="questions" role="form" aria-live="polite">
+            <!-- Questions will be dynamically inserted here -->
+        </div>
+        <div id="result" role="alert" aria-live="polite"></div>
+    </main>
+    <footer>
+        © 2024 Time Travel Explorer
+    </footer>
+
+    <script>
+        // API configuration
+        const API_CONFIG = {
+            API_KEY: 'AIzaSyDnGeRO2mfwjACk3-xKOQfvm-dGLdwYPbw',
+            BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+        };
+
+        const questions = [
+            {
+                question: "What matters most to you in life?",
+                options: [
+                    "Creativity and self-expression",
+                    "Stability and tradition",
+                    "Adventure and discovery",
+                    "Innovation and progress"
+                ]
+            },
+            {
+                question: "How do you view societal rules and norms?",
+                options: [
+                    "They're restrictive and should evolve",
+                    "They provide necessary order",
+                    "They're flexible guidelines",
+                    "They're obstacles to progress"
+                ]
+            },
+            {
+                question: "What kind of environment do you prefer?",
+                options: [
+                    "A bustling artistic community",
+                    "A traditional, structured setting",
+                    "An unexplored frontier",
+                    "A high-tech metropolis"
+                ]
+            },
+            {
+                question: "What's your approach to problem-solving?",
+                options: [
+                    "Creative and intuitive",
+                    "Methodical and traditional",
+                    "Practical and adaptive",
+                    "Innovative and experimental"
+                ]
+            }
+        ];
+
+        let currentQuestion = 0;
+        const responses = [];
+
+        function updateProgress() {
+            const progress = document.getElementById('progress');
+            const percentage = (currentQuestion / questions.length) * 100;
+            progress.style.width = `${percentage}%`;
+        }
+
+        function renderQuestions(index = 0) {
+            const questionsDiv = document.getElementById('questions');
+            if (index >= questions.length) {
+                getResult();
+                return;
+            }
+            
+            currentQuestion = index;
+            updateProgress();
+            
+            const question = questions[index];
+            questionsDiv.innerHTML = `
+                <div class="question">
+                    <h2>${question.question}</h2>
+                    <div class="options">
+                        ${question.options.map((option, i) => `
+                            <button 
+                                onclick="handleResponse(${index}, ${i})"
+                                aria-label="${option}"
+                            >${option}</button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function handleResponse(questionIndex, optionIndex) {
+            responses.push({
+                question: questions[questionIndex].question,
+                answer: questions[questionIndex].options[optionIndex]
+            });
+
+            const questionDiv = document.querySelector('.question');
+            questionDiv.style.animation = 'fadeOut 0.3s forwards';
+            
+            setTimeout(() => {
+                renderQuestions(questionIndex + 1);
+            }, 300);
+        }
+
+        async function getResult() {
+            const questionsDiv = document.getElementById('questions');
+            questionsDiv.style.display = 'none';
+            const resultDiv = document.getElementById('result');
+
+            resultDiv.innerHTML = `
+                <div class="loading"></div>
+                <p>Analyzing your answers...</p>
+            `;
+            resultDiv.style.display = 'block';
+
+            // Create a prompt based on user responses
+            const prompt = `Based on these quiz responses: ${JSON.stringify(responses)}, 
+                        determine which historical era (Renaissance, Victorian Era, Age of Exploration, 
+                        or Future Age) would be the best match. Provide the era name followed by a 
+                        2-3 sentence explanation of why this era suits the person. Make it personal 
+                        and engaging.`;
+
+            try {
+                const response = await fetch(`${API_CONFIG.BASE_URL}?key=${API_CONFIG.API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        contents: [{
+                            parts: [{
+                                text: prompt
+                            }]
+                        }]
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const result = data.candidates[0].content.parts[0].text;
+                
+                // Split the result into era and description
+                const [era, ...descriptionParts] = result.split('\n');
+                const description = descriptionParts.join('\n');
+
+                resultDiv.innerHTML = `
+                    <h2>Your Perfect Era: ${era}</h2>
+                    <p>${description}</p>
+                    <button onclick="resetQuiz()" class="retry-button">Take Quiz Again</button>
+                `;
+            } catch (error) {
+                console.error('API Error:', error);
+                resultDiv.innerHTML = `
+                    <h2>Oops! Something went wrong.</h2>
+                    <p>Please try again later.</p>
+                    <button onclick="resetQuiz()" class="retry-button">Try Again</button>
+                `;
+            }
+        }
+
+        function resetQuiz() {
+            currentQuestion = 0;
+            responses.length = 0;
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'none';
+            
+            const questionsDiv = document.getElementById('questions');
+            questionsDiv.style.display = 'block';
+            
+            renderQuestions();
+        }
+
+        // Initialize the quiz
+        renderQuestions();
+    </script>
+</body>
+</html>
