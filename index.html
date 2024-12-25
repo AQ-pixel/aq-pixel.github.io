@@ -80,7 +80,30 @@
             animation: fadeIn 0.5s forwards;
         }
 
+        .result-content {
+            opacity: 0;
+            animation: fadeIn 1s forwards;
+        }
+
+        .era-title {
+            font-size: 2.2em;
+            margin-bottom: 1rem;
+            color: #2a9df4;
+            text-shadow: 0 0 10px rgba(42, 157, 244, 0.3);
+        }
+
+        .era-description {
+            font-size: 1.2em;
+            line-height: 1.6;
+            margin: 1.5rem 0;
+            color: #fff;
+        }
+
         @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
             to {
                 opacity: 1;
                 transform: translateY(0);
@@ -206,8 +229,8 @@
     <script>
         // API configuration
         const API_CONFIG = {
-            API_KEY: 'AIzaSyDnGeRO2mfwjACk3-xKOQfvm-dGLdwYPbw',
-            BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent'
+            API_KEY: 'YOUR_API_KEY_HERE', // Replace with your actual API key
+            BASE_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent'
         };
 
         const questions = [
@@ -302,22 +325,30 @@
             const questionsDiv = document.getElementById('questions');
             questionsDiv.style.display = 'none';
             const resultDiv = document.getElementById('result');
-
             resultDiv.innerHTML = `
                 <div class="loading"></div>
-                <p>Analyzing your answers...</p>
+                <p>Discovering your perfect era...</p>
             `;
             resultDiv.style.display = 'block';
 
-            // Create a prompt based on user responses
             const prompt = `Based on these quiz responses: ${JSON.stringify(responses)}, 
-                        determine which historical era (Renaissance, Victorian Era, Age of Exploration, 
-                        or Future Age) would be the best match. Provide the era name followed by a 
-                        2-3 sentence explanation of why this era suits the person. Make it personal 
-                        and engaging.`;
+                craft an exciting, personal message telling the user which historical era they would thrive in 
+                (Renaissance: 1300-1600, Age of Exploration: 1400-1700, Victorian Era: 1837-1901, or Future Age).
+                
+                Requirements:
+                - Address the user directly using "you" and "your"
+                - Start with an engaging hook about their perfect era match
+                - Paint a vivid picture of their potential life in that era
+                - Connect their quiz answers to specific aspects of that time period
+                - Keep it concise but captivating (2-3 sentences)
+                - Focus on the exciting opportunities they would have had
+                
+                Format the response as:
+                Era Name
+                [One exciting paragraph about their life in that era]`;
 
             try {
-                const response = await fetch(`${API_CONFIG.BASE_URL}?key=${API_CONFIG.API_KEY}`, {
+                const response = await fetch(`${API_CONFIG.BASE_URL}?key=AIzaSyDnGeRO2mfwjACk3-xKOQfvm-dGLdwYPbw`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -327,7 +358,13 @@
                             parts: [{
                                 text: prompt
                             }]
-                        }]
+                        }],
+                        generationConfig: {
+                            temperature: 0.7,
+                            topK: 40,
+                            topP: 0.95,
+                            maxOutputTokens: 200,
+                        }
                     })
                 });
 
@@ -336,23 +373,36 @@
                 }
 
                 const data = await response.json();
-                const result = data.candidates[0].content.parts[0].text;
                 
-                // Split the result into era and description
-                const [era, ...descriptionParts] = result.split('\n');
-                const description = descriptionParts.join('\n');
+                // Check if we have a valid response with the expected structure
+                if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+                    throw new Error('Invalid API response format');
+                }
+
+                const result = data.candidates[0].content.parts[0].text.trim();
+                
+                // Split the result into era and description, handling potential formatting issues
+                const lines = result.split('\n').filter(line => line.trim());
+                const era = lines[0];
+                const description = lines.slice(1).join('\n');
+
+                if (!era || !description) {
+                    throw new Error('Invalid response format from API');
+                }
 
                 resultDiv.innerHTML = `
-                    <h2>Your Perfect Era: ${era}</h2>
-                    <p>${description}</p>
-                    <button onclick="resetQuiz()" class="retry-button">Take Quiz Again</button>
+                    <div class="result-content">
+                        <h2 class="era-title">Your Perfect Era: ${era}</h2>
+                        <div class="era-description">${description}</div>
+                        <button onclick="resetQuiz()" class="retry-button">Explore Another Era</button>
+                    </div>
                 `;
             } catch (error) {
                 console.error('API Error:', error);
                 resultDiv.innerHTML = `
-                    <h2>Oops! Something went wrong.</h2>
-                    <p>Please try again later.</p>
-                    <button onclick="resetQuiz()" class="retry-button">Try Again</button>
+                    <h2>Time Portal Disrupted!</h2>
+                    <p>Our time machine encountered a glitch. Care to try again?</p>
+                    <button onclick="resetQuiz()" class="retry-button">Start New Journey</button>
                 `;
             }
         }
